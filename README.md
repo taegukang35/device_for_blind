@@ -1,1 +1,1 @@
-# rne_pj
+# Device for Blinds Project
