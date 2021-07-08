@@ -1,0 +1,74 @@
+import cv2
+import glob
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+from os import path
+
+SIZE_X = 256 #Resize images (height  = X, width = Y)
+SIZE_Y = 256
+
+save_path = "/content/unet_results"
+img_path = "/content/drive/MyDrive/stairhallway/hallway"
+
+imgs = []
+for i in range(len(glob.glob(os.path.join(img_path,"*.jpg")))):
+    if path.exists(os.path.join(img_path,'hallway{0}.jpg'.format(i))):
+      img = cv2.imread(os.path.join(img_path,'hallway{0}.jpg'.format(i)))
+      img = cv2.resize(img,(SIZE_Y,SIZE_X))
+      img = cv2.cvtColor(img,cv2.COLOR_RGB2BGR)
+      imgs.append(img)
+      
+from keras.models import Model, load_model
+from keras.layers import Input
+from keras.layers.core import Dropout, Lambda
+from keras.layers.convolutional import Conv2D, Conv2DTranspose
+from keras.layers.pooling import MaxPooling2D
+from keras.layers.merge import concatenate
+from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras import backend as K
+import tensorflow as tf
+
+model = load_model('/content/model-best-unet.h5')
+images = np.array(imgs)
+def plot_results(i,img):
+    img = cv2.resize(img, (SIZE_Y, SIZE_X))
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    fig = plt.figure()     
+    rows = 1
+    cols = 2
+    ax1 = fig.add_subplot(rows, cols, 1)
+    ax1.imshow(img)
+    ax1.set_title('image')
+    ax1.axis("off")
+    img = np.asarray(img).astype('float32')
+    img = np.expand_dims(img,axis=0)
+    mask = model.predict(img)
+    ax2 = fig.add_subplot(rows, cols, 2)
+    ax2.imshow(mask[0][:,:,0])
+    ax2.set_title('mask')
+    ax2.axis("off")
+    plt.savefig('/content/model_result/result{0}.png'.format(i))
+
+
+for i in range(len(glob.glob(os.path.join(img_path,"*.jpg")))):
+  plot_results(i,images[i])
+
+
+img_path = '/content/model_result'
+
+img_array = []
+for i in range(len(glob.glob(os.path.join(img_path,"*.png")))):
+    if path.exists(os.path.join(img_path,'result{0}.png'.format(i))):
+      filename = os.path.join(img_path,'result{0}.png'.format(i))
+      img = cv2.imread(filename)
+      height, width, layers = img.shape
+      size = (width,height)
+      img_array.append(img)
+ 
+ 
+out = cv2.VideoWriter('project1.avi',cv2.VideoWriter_fourcc(*'DIVX'),45, size)
+ 
+for i in range(len(img_array)):
+    out.write(img_array[i])
+out.release()
